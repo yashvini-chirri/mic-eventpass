@@ -57,15 +57,20 @@ mic-eventpass/
 ```
 ##Screenshots
 1)splashscreen
-<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/792da209-1a03-43fe-916d-05eb65824422" />
+<img width="735" height="388" alt="image" src="https://github.com/user-attachments/assets/72d0cf6d-de6d-42ec-96fc-66929a6e9936" />
+
 2)login page
-<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/cdf15940-1701-47e0-a97b-87708258450f" />
+<img width="734" height="374" alt="image" src="https://github.com/user-attachments/assets/3618edd0-64df-4ae6-8733-ccc2772e964c" />
+
 3)organizer page
-<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/70b1108d-c008-4236-96e0-48fb40c6f771" />
+<img width="727" height="384" alt="image" src="https://github.com/user-attachments/assets/e3d9818d-aa80-48ff-aff8-03262ff8c3d1" />
+
 4)attendee page
-<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/775de0e5-85c3-409d-a39a-33f9fb05f5d3" />
-4)darkmode
-<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/501f7bf3-b059-47ca-a6c0-17c8fc0bdbbf" />
+<img width="723" height="366" alt="image" src="https://github.com/user-attachments/assets/9d70d827-4dbd-41fb-a071-0387db431840" />
+
+5)darkmode
+<img width="729" height="377" alt="image" src="https://github.com/user-attachments/assets/6c3525a4-0eb7-477b-b90d-d1023c363343" />
+
 
 
 

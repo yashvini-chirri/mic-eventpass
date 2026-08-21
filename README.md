@@ -242,7 +242,7 @@ OPENAI_MODEL=gpt-4o-mini
 
 - The app is designed for event check-in and attendee tracking workflows.
 - The frontend and backend must both be running during normal use.
-- The repository is set up for local development and can be extended for deployment later.
+
 
 ## Status
 

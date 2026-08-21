@@ -1,6 +1,6 @@
-# MIC EventPass
+# Eventry
 
-MIC EventPass is a full-stack event management app for MIC events. It supports organizer workflows, attendee registration, QR code ticketing, live dashboards, and AI-assisted event insights.
+Eventry is a full-stack event management app for MIC events. It supports organizer workflows, attendee registration, QR code ticketing, live dashboards, and AI-assisted event insights.
 
 ## Overview
 

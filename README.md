@@ -59,34 +59,22 @@ mic-eventpass/
 ├── README.md
 └── .gitignore
 ```
-##Screenshots
-1)splashscreen
+## Screenshots
 
+### Splash Screen
+![Splash Screen](./screenshots/splashscreen.png)
 
-<img width="735" height="388" alt="image" src="https://github.com/user-attachments/assets/72d0cf6d-de6d-42ec-96fc-66929a6e9936" />
+### Login Page
+![Login Page](./screenshots/login.png)
 
-2)login page
+### Organizer Dashboard
+![Organizer Dashboard](./screenshots/organizer.png)
 
+### Attendee Page
+![Attendee Page](./screenshots/attendee.png)
 
-<img width="734" height="374" alt="image" src="https://github.com/user-attachments/assets/3618edd0-64df-4ae6-8733-ccc2772e964c" />
-
-3)organizer page
-
-
-<img width="727" height="384" alt="image" src="https://github.com/user-attachments/assets/e3d9818d-aa80-48ff-aff8-03262ff8c3d1" />
-
-4)attendee page
-
-
-<img width="723" height="366" alt="image" src="https://github.com/user-attachments/assets/9d70d827-4dbd-41fb-a071-0387db431840" />
-
-5)darkmode
-
-
-<img width="729" height="377" alt="image" src="https://github.com/user-attachments/assets/6c3525a4-0eb7-477b-b90d-d1023c363343" />
-
-
-
+### Dark Mode
+![Dark Mode](./screenshots/darkmode.png)
 
 
 

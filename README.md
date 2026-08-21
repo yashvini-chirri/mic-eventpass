@@ -62,19 +62,24 @@ mic-eventpass/
 ## Screenshots
 
 ### Splash Screen
-![Splash Screen](./screenshots/splashscreen.png)
+<img width="735" height="388" alt="Screenshot 2026-08-21 231432" src="https://github.com/user-attachments/assets/64e18b34-4140-4659-a640-f60aa8504dee" />
+
 
 ### Login Page
-![Login Page](./screenshots/login.png)
+<img width="734" height="374" alt="Screenshot 2026-08-21 231455" src="https://github.com/user-attachments/assets/012d2021-f6af-4789-9d03-fe3eda14b87a" />
+
 
 ### Organizer Dashboard
-![Organizer Dashboard](./screenshots/organizer.png)
+<img width="720" height="389" alt="Screenshot 2026-08-21 231526" src="https://github.com/user-attachments/assets/33ef1b4c-ff26-4bbe-aab4-05e8228f1162" />
+
 
 ### Attendee Page
-![Attendee Page](./screenshots/attendee.png)
+<img width="723" height="366" alt="Screenshot 2026-08-21 231540" src="https://github.com/user-attachments/assets/43d0e959-09e9-4366-99d0-5ce29c24c83d" />
+
 
 ### Dark Mode
-![Dark Mode](./screenshots/darkmode.png)
+![Uploading Screenshot 2026-08-21 231639.png…]()
+
 
 
 

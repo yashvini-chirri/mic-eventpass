@@ -55,6 +55,22 @@ mic-eventpass/
 ├── README.md
 └── .gitignore
 ```
+##Screenshots
+1)splashscreen
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/792da209-1a03-43fe-916d-05eb65824422" />
+2)login page
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/cdf15940-1701-47e0-a97b-87708258450f" />
+3)organizer page
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/70b1108d-c008-4236-96e0-48fb40c6f771" />
+4)attendee page
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/775de0e5-85c3-409d-a39a-33f9fb05f5d3" />
+4)darkmode
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/501f7bf3-b059-47ca-a6c0-17c8fc0bdbbf" />
+
+
+
+
+
 
 ## Local Setup
 

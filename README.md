@@ -78,7 +78,8 @@ mic-eventpass/
 
 
 ### Dark Mode
-![Uploading Screenshot 2026-08-21 231639.png…]()
+<img width="729" height="377" alt="Screenshot 2026-08-21 231639" src="https://github.com/user-attachments/assets/7c3a7909-d1ca-46d3-8857-8107c8f98be8" />
+
 
 
 

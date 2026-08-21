@@ -20,12 +20,13 @@ async function getEvents(req, res) {
 
 async function createEvent(req, res) {
   try {
-    const { name, eventDate, capacity, createdBy } = req.body;
+    const { name, eventDate, capacity } = req.body;
+    const createdBy = req.user.id;
 
-    if (!name || !eventDate || !capacity || !createdBy) {
+    if (!name || !eventDate || !capacity) {
       return res.status(400).json({
         success: false,
-        message: "name, eventDate, capacity and createdBy are required",
+        message: "name, eventDate and capacity are required",
       });
     }
 
@@ -35,6 +36,8 @@ async function createEvent(req, res) {
       capacity,
       createdBy,
     });
+
+    req.app.get("io").emit("event:created", { eventId: event.id });
 
     res.status(201).json({
       success: true,

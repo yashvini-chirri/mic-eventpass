@@ -1,69 +1,284 @@
+"use client";
+
+import { ChangeEvent, FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import QRCode from "qrcode";
+import { Camera, CheckCircle2, Clipboard, ImagePlus, Lightbulb, Moon, Plus, QrCode, ScanLine, Sun, Ticket } from "lucide-react";
+import { createClient, type Session } from "@supabase/supabase-js";
+import { io } from "socket.io-client";
+
+type Event = { id: string; name: string; capacity: number };
+type Dashboard = { eventName: string; capacity: number; registeredCount: number; checkedInCount: number; attendees: { name: string; email: string; registeredAt: string; checkedInAt: string | null }[] };
+type OfflineScan = { token: string; idempotencyKey: string; queuedAt: string };
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  : null;
 
 export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+  const [events, setEvents] = useState<Event[]>([]);
+  const [eventId, setEventId] = useState("");
+  const [session, setSession] = useState<Session | null>(null);
+  const [role, setRole] = useState<"attendee" | "organizer" | null>(null);
+  const [organizerPanel, setOrganizerPanel] = useState<"scan" | "create" | "insights">("scan");
+  const [darkMode, setDarkMode] = useState(false);
+  const [themeReady, setThemeReady] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [eventName, setEventName] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [eventCapacity, setEventCapacity] = useState("50");
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [offlineQueue, setOfflineQueue] = useState<OfflineScan[]>([]);
+  const [question, setQuestion] = useState("");
+  const [insightAnswer, setInsightAnswer] = useState("");
+  const [insightLoading, setInsightLoading] = useState(false);
+  const [token, setToken] = useState("");
+  const [qrImage, setQrImage] = useState("");
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState(!supabase ? "Supabase Auth is not configured in the frontend." : "");
+  const scannerRef = useRef<{ stop: () => Promise<void> } | null>(null);
+
+  useEffect(() => {
+    if (supabase) {
+      supabase.auth.getSession().then(({ data }) => setSession(data.session));
+      const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
+      return () => listener.subscription.unsubscribe();
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const savedTheme = localStorage.getItem("eventpass-theme");
+      setDarkMode(savedTheme ? savedTheme === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches);
+      setThemeReady(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = darkMode ? "dark" : "light";
+    localStorage.setItem("eventpass-theme", darkMode ? "dark" : "light");
+  }, [darkMode]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShowSplash(false), 1200);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (role !== "organizer" || !eventId || !session) return;
+    let active = true;
+    const loadDashboard = async () => {
+      const response = await fetch(`${API_URL}/api/registrations/dashboard/${eventId}`, { headers: session ? { Authorization: `Bearer ${session.access_token}` } : {} });
+      const data = await response.json();
+      if (active && response.ok) setDashboard(data.dashboard);
+    };
+    loadDashboard();
+    const socket = io(API_URL, { transports: ["websocket", "polling"] });
+    socket.on("event:updated", (update: { eventId: string }) => {
+      if (update.eventId === eventId) loadDashboard();
+    });
+    return () => { active = false; socket.disconnect(); };
+  }, [eventId, role, session]);
+
+  useEffect(() => {
+    if (!supabase || !session) {
+      return;
+    }
+
+    supabase.from("profiles").select("role").eq("id", session.user.id).single()
+      .then(({ data, error: profileError }) => {
+        if (profileError || !data || !["attendee", "organizer"].includes(data.role)) {
+          setError("Your account profile is missing a valid role.");
+          setRole(null);
+        } else {
+          setError("");
+          setRole(data.role as "attendee" | "organizer");
+        }
+      }, () => {
+        setError("Could not load your account profile.");
+        setRole(null);
+      });
+  }, [session]);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/events`).then((response) => response.json()).then((data) => {
+      setEvents(data.events || []);
+      if (data.events?.[0]) setEventId(data.events[0].id);
+    }).catch(() => setError("Could not load events. Is the backend running?"));
+  }, []);
+
+  async function signIn(event: FormEvent) {
+    event.preventDefault(); setError("");
+    if (!supabase) { setError("Supabase Auth is not configured in the frontend."); return; }
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInError) setError(signInError.message);
+  }
+
+  async function signOut() { await supabase?.auth.signOut(); setQrImage(""); setToken(""); }
+
+  function authHeaders(): Record<string, string> {
+    return session ? { Authorization: `Bearer ${session.access_token}` } : {};
+  }
+
+  async function register(event: FormEvent) {
+    event.preventDefault(); setError(""); setStatus("Registering...");
+    try {
+      const response = await fetch(`${API_URL}/api/registrations`, { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() }, body: JSON.stringify({ eventId }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Registration failed");
+      setToken(data.registration.qrToken);
+      setQrImage(await QRCode.toDataURL(data.registration.qrToken, { margin: 2, width: 280 }));
+      setStatus("Registration confirmed. Keep this QR code ready at check-in.");
+    } catch (registrationError) { setStatus(""); setError(registrationError instanceof Error ? registrationError.message : "Registration failed"); }
+  }
+
+  async function createEvent(event: FormEvent) {
+    event.preventDefault();
+    setError("");
+    setStatus("Creating event...");
+    try {
+      const response = await fetch(`${API_URL}/api/events`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ name: eventName, eventDate, capacity: Number(eventCapacity) }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Event creation failed");
+      setEvents((currentEvents) => [...currentEvents, data.event]);
+      setEventId(data.event.id);
+      setEventName("");
+      setEventDate("");
+      setEventCapacity("50");
+      setStatus("Event created successfully.");
+    } catch (creationError) {
+      setStatus("");
+      setError(creationError instanceof Error ? creationError.message : "Event creation failed");
+    }
+  }
+
+  async function checkIn(scannedToken = token) {
+    setError(""); setStatus("Checking in...");
+    try {
+      if (!navigator.onLine) {
+        queueOfflineScan(scannedToken);
+        setStatus("Offline: scan saved on this device and will sync when connection returns.");
+        return;
+      }
+      const response = await fetch(`${API_URL}/api/registrations/check-in`, { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() }, body: JSON.stringify({ token: scannedToken }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Check-in failed");
+      setStatus(`Checked in at ${new Date(data.checkin.checked_in_at).toLocaleTimeString()}.`);
+    } catch (checkInError) {
+      if (checkInError instanceof TypeError || !navigator.onLine) {
+        queueOfflineScan(scannedToken);
+        setStatus("Connection lost: scan saved and will sync automatically.");
+      } else { setStatus(""); setError(checkInError instanceof Error ? checkInError.message : "Check-in failed"); }
+    }
+  }
+
+  function queueOfflineScan(scannedToken: string) {
+    const queue = JSON.parse(localStorage.getItem("eventpass-offline-scans") || "[]") as OfflineScan[];
+    if (!queue.some((item) => item.token === scannedToken)) {
+      queue.push({ token: scannedToken, idempotencyKey: crypto.randomUUID(), queuedAt: new Date().toISOString() });
+      localStorage.setItem("eventpass-offline-scans", JSON.stringify(queue));
+      setOfflineQueue(queue);
+    }
+  }
+
+  const syncOfflineScans = useCallback(async () => {
+    const queue = JSON.parse(localStorage.getItem("eventpass-offline-scans") || "[]") as OfflineScan[];
+    if (!queue.length || !session) return;
+    const remaining: OfflineScan[] = [];
+    for (const scan of queue) {
+      try {
+        const response = await fetch(`${API_URL}/api/registrations/check-in`, { method: "POST", headers: { "Content-Type": "application/json", ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}) }, body: JSON.stringify({ token: scan.token, idempotencyKey: scan.idempotencyKey, source: "offline" }) });
+        if (!response.ok && response.status !== 409) remaining.push(scan);
+      } catch { remaining.push(scan); }
+    }
+    localStorage.setItem("eventpass-offline-scans", JSON.stringify(remaining));
+    setOfflineQueue(remaining);
+    if (queue.length !== remaining.length) setStatus("Offline scans synced. Duplicate scans were safely rejected by the server.");
+  }, [session]);
+
+  useEffect(() => {
+    const loadQueue = () => setOfflineQueue(JSON.parse(localStorage.getItem("eventpass-offline-scans") || "[]"));
+    const sync = () => { if (navigator.onLine) syncOfflineScans(); };
+    loadQueue();
+    window.addEventListener("online", sync);
+    const timer = window.setInterval(sync, 10000);
+    return () => { window.removeEventListener("online", sync); window.clearInterval(timer); };
+  }, [session, syncOfflineScans]);
+
+  async function toggleScanner() {
+    if (scannerRef.current) { await scannerRef.current.stop(); scannerRef.current = null; setStatus("Camera stopped."); return; }
+    setError("");
+    const { Html5Qrcode } = await import("html5-qrcode");
+    const scanner = new Html5Qrcode("qr-reader"); scannerRef.current = scanner;
+    await scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 220, height: 220 } }, async (decodedToken) => { await scanner.stop(); scannerRef.current = null; setToken(decodedToken); await checkIn(decodedToken); }, () => undefined);
+    setStatus("Point the camera at an attendee QR code.");
+  }
+
+  async function scanImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setError("");
+    const { Html5Qrcode } = await import("html5-qrcode");
+    const scanner = new Html5Qrcode("qr-reader");
+    try {
+      const decodedToken = await scanner.scanFile(file, true);
+      setToken(decodedToken);
+      await checkIn(decodedToken);
+    } catch {
+      setError("No readable QR code was found in that image.");
+    } finally {
+      scanner.clear();
+    }
+  }
+
+  async function exportEvent() {
+    if (!eventId || !session) return;
+    const response = await fetch(`${API_URL}/api/registrations/export/${eventId}`, { headers: authHeaders() });
+    if (!response.ok) { setError("Could not export event data."); return; }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `event-${eventId}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setStatus("CSV export downloaded.");
+  }
+
+  async function askInsight(event: FormEvent) {
+    event.preventDefault();
+    if (!eventId || !session || !question.trim()) return;
+    setInsightLoading(true);
+    setInsightAnswer("");
+    try {
+      const response = await fetch(`${API_URL}/api/insights/${eventId}`, { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() }, body: JSON.stringify({ question }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Could not answer insight");
+      setInsightAnswer(`${data.answer}${data.fallback ? " (using live raw statistics)" : ""}`);
+    } catch (insightError) {
+      setError(insightError instanceof Error ? insightError.message : "Could not answer insight");
+    } finally { setInsightLoading(false); }
+  }
+
+  return <main className="app-shell" data-role={role || "public"} data-organizer-panel={organizerPanel}>
+    {showSplash && <div className="splash-screen" role="status" aria-label="Loading EventPass"><div className="splash-mark"><Ticket size={28} /><span>EventPass</span></div><div className="splash-line"><span /></div><p>Event entry, made human.</p></div>}
+    {session && role === "organizer" && <aside className="organizer-sidebar"><p className="sidebar-kicker">Organizer desk</p><h2>Event control</h2><button className={organizerPanel === "scan" ? "active" : ""} onClick={() => setOrganizerPanel("scan")}><ScanLine size={18} /> Scan QR</button><button className={organizerPanel === "create" ? "active" : ""} onClick={() => setOrganizerPanel("create")}><Plus size={18} /> Create event</button><button className={organizerPanel === "insights" ? "active" : ""} onClick={() => setOrganizerPanel("insights")}><Lightbulb size={18} /> Event insights</button></aside>}
+    {session && role === "organizer" && <div className="workspace event-selector"><label>Dashboard event<select value={eventId} onChange={(event) => { setEventId(event.target.value); setDashboard(null); }} required><option value="">Choose an event</option>{events.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.capacity} spots</option>)}</select></label></div>}
+    <header className="topbar"><div className="brand"><Ticket size={20} /><span>EventPass</span></div><div className="connection"><button className="theme-button" onClick={() => setDarkMode((current) => !current)} aria-label={themeReady && darkMode ? "Use light mode" : "Use dark mode"}>{themeReady && darkMode ? <Sun size={17} /> : <Moon size={17} />}</button><span className="pulse" /> live backend {session && <button className="copy-button" onClick={signOut}>Sign out</button>}</div></header>
+    {!session && <section className="hero"><p className="eyebrow">MIC Development Department</p><h1>Fast entry.<br /><em>Human welcome.</em></h1><p className="intro">Sign in to access your event workspace.</p></section>}
+    <section className="workspace">
+      {!session && <form className="panel auth-panel" onSubmit={signIn}><div className="panel-heading"><span className="number">00</span><div><h2>Sign in to EventPass</h2><p>Use your Supabase account to access your attendee or organizer tools.</p></div></div><label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label><label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label><button className="primary" type="submit">Sign in <CheckCircle2 size={17} /></button></form>}
+      {session && !role && !error && <div className="panel"><p>Loading your workspace...</p></div>}
+      {session && role === "attendee" && <div className="panel-grid"><form className="panel" onSubmit={register}><div className="panel-heading"><span className="number">01</span><div><h2>Claim your pass</h2><p>Your signed-in attendee profile will be used.</p></div></div><label>Event<select value={eventId} onChange={(event) => setEventId(event.target.value)} required><option value="">Choose an event</option>{events.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.capacity} spots</option>)}</select></label><button className="primary" type="submit">Generate my QR <QrCode size={17} /></button></form><div className="panel pass-panel">{qrImage ? <><div className="qr-frame"><Image src={qrImage} alt="Your event QR pass" width={280} height={280} unoptimized /></div><p className="pass-label">Your entry pass</p><button className="copy-button" onClick={() => navigator.clipboard.writeText(token)}><Clipboard size={16} /> Copy token</button></> : <div className="empty-pass"><QrCode size={42} /><p>Your QR pass will appear here</p><span>Register for an event to create it.</span></div>}</div></div>}
+      {session && role === "organizer" && <><div className="organizer-grid"><form className="panel" onSubmit={createEvent}><div className="panel-heading"><span className="number">01</span><div><h2>Create an event</h2><p>Set the event details before attendees register.</p></div></div><label>Event name<input value={eventName} onChange={(event) => setEventName(event.target.value)} placeholder="MIC Annual Meetup" required /></label><label>Date and time<input type="datetime-local" value={eventDate} onChange={(event) => setEventDate(event.target.value)} required /></label><label>Capacity<input type="number" min="1" value={eventCapacity} onChange={(event) => setEventCapacity(event.target.value)} required /></label><button className="primary" type="submit">Create event <CheckCircle2 size={17} /></button></form><div className="panel scanner-panel"><div className="panel-heading"><span className="number">02</span><div><h2>Check in an attendee</h2><p>Upload a QR image, scan with your camera, or paste its token.</p></div></div><div className="scanner" id="qr-reader"><div className="scanner-placeholder"><Camera size={32} /><span>Camera preview</span></div></div><button className="primary" onClick={toggleScanner}><Camera size={17} /> Start camera scanner</button><label className="upload-button"><ImagePlus size={17} /> Upload QR image<input type="file" accept="image/*" onChange={scanImage} /></label><div className="divider"><span>or use token</span></div><div className="inline-form"><input value={token} onChange={(event) => setToken(event.target.value)} placeholder="Paste QR token" /><button className="secondary" onClick={() => checkIn()} disabled={!token}><CheckCircle2 size={17} /> Check in</button></div><p className="queue-status">Offline queue: {offlineQueue.length}</p></div></div><div className="panel dashboard-panel"><div className="panel-heading"><span className="number">03</span><div><h2>{dashboard?.eventName || "Event dashboard"}</h2><p>Updates automatically every five seconds.</p></div></div><button className="secondary export-button" onClick={exportEvent}>Export CSV</button>{dashboard && <><div className="stats"><div><strong>{dashboard.registeredCount}</strong><span>registered</span></div><div><strong>{dashboard.checkedInCount}</strong><span>checked in</span></div><div><strong>{dashboard.capacity - dashboard.registeredCount}</strong><span>spots left</span></div></div><div className="attendee-list">{dashboard.attendees.map((attendee) => <div className="attendee-row" key={attendee.email}><span><b>{attendee.name}</b><small>{attendee.email}</small></span><em className={attendee.checkedInAt ? "checked" : "pending"}>{attendee.checkedInAt ? `Checked in ${new Date(attendee.checkedInAt).toLocaleTimeString()}` : "Not checked in"}</em></div>)}</div></>}<form className="insight-form" onSubmit={askInsight}><label>Ask about this event<input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="How many people have checked in so far?" /></label><button className="secondary" type="submit" disabled={insightLoading || !question.trim()}>{insightLoading ? "Thinking..." : "Ask insight"}</button>{insightAnswer && <p className="insight-answer">{insightAnswer}</p>}</form></div></>}
+      {status && <p className="notice success">{status}</p>}{error && <p className="notice error">{error}</p>}
+    </section>
+  </main>;
 }

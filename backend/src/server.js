@@ -4,6 +4,7 @@ const express = require("express");
 const http = require("http");
 const cors = require("cors");
 const { Server } = require("socket.io");
+
 const pool = require("./config/db");
 const eventRoutes = require("./routes/eventRoutes");
 const registrationRoutes = require("./routes/registrationRoutes");
@@ -11,12 +12,23 @@ const insightRoutes = require("./routes/insightRoutes");
 
 const app = express();
 const httpServer = http.createServer(app);
+
 const io = new Server(httpServer, {
-  cors: { origin: true, credentials: true },
+  cors: {
+    origin: true,
+    credentials: true,
+  },
 });
+
 app.set("io", io);
 
-app.use(cors());
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
 app.use("/api/events", eventRoutes);
@@ -48,6 +60,6 @@ app.get("/db-test", async (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-httpServer.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`);
+httpServer.listen(PORT, "0.0.0.0", () => {
+  console.log(`Backend running on port ${PORT}`);
 });

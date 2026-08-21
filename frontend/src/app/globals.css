@@ -956,15 +956,19 @@ select:focus {
 .copy-button {
   margin-top: 13px;
 
-  color: #ffffff !important;
+  color: #16211f !important;
 
-  background: transparent;
+  background: var(--yellow) !important;
+
+  border: 2px solid #16211f;
+
+  cursor: pointer;
 }
 
 .copy-button:hover {
-  color: #ffffff !important;
+  color: #16211f !important;
 
-  background: rgba(255, 255, 255, 0.08);
+  background: #f7d978 !important;
 }
 
 .empty-pass {

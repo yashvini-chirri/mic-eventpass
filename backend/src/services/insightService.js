@@ -65,10 +65,39 @@ function fallbackAnswer(question, stats) {
 }
 
 async function answerInsight(question, stats) {
-  if (!process.env.OPENAI_API_KEY) return { answer: fallbackAnswer(question, stats), fallback: true, stats };
+  if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
+    return { answer: fallbackAnswer(question, stats), fallback: true, stats };
+  }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
   try {
+    const instruction = "Answer only from the provided event statistics. Never invent or alter numbers. If the question is unrelated, say so.";
+    const context = JSON.stringify({ question, statistics: stats });
+
+    if (process.env.GEMINI_API_KEY) {
+      const model = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          signal: controller.signal,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: instruction }] },
+            contents: [{ role: "user", parts: [{ text: context }] }],
+            generationConfig: { temperature: 0 },
+          }),
+        }
+      );
+      if (!response.ok) throw new Error(`Gemini request failed: ${response.status}`);
+      const data = await response.json();
+      return {
+        answer: data.candidates?.[0]?.content?.parts?.[0]?.text || fallbackAnswer(question, stats),
+        fallback: false,
+        stats,
+      };
+    }
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       signal: controller.signal,
@@ -77,8 +106,8 @@ async function answerInsight(question, stats) {
         model: process.env.OPENAI_MODEL || "gpt-4o-mini",
         temperature: 0,
         messages: [
-          { role: "system", content: "Answer only from the provided event statistics. Never invent or alter numbers. If the question is unrelated, say so." },
-          { role: "user", content: JSON.stringify({ question, statistics: stats }) },
+          { role: "system", content: instruction },
+          { role: "user", content: context },
         ],
       }),
     });

@@ -31,7 +31,7 @@ The app has two main parts:
 - Real-time refresh using Socket.IO
 - CSV export of event attendance data
 - Offline QR scan queue with retry on reconnect
-- AI event insights powered by OpenAI when configured
+- AI event insights powered by Gemini when configured, with optional OpenAI support
 - Fallback insight generation from raw database statistics if AI is unavailable
 - Server-side security checks for Supabase access tokens and user role enforcement
 - Database concurrency protections for capacity limits and duplicate check-ins
@@ -83,6 +83,9 @@ DATABASE_URL=postgresql://user:password@host:5432/database
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=gemini-3.6-flash
+# Optional alternative provider when Gemini is not configured
 OPENAI_API_KEY=your-openai-api-key
 OPENAI_MODEL=gpt-4o-mini
 PORT=5000
@@ -194,11 +197,14 @@ VERDICT        : PASS
 
 ## AI Insights
 
-OpenAI is configured on the backend only. If the API key is missing or the call fails, the app falls back to a deterministic database-statistics answer instead of breaking the feature.
+Gemini is preferred and called from the backend only. The backend passes the live event statistics calculated from PostgreSQL as context and instructs the model to use only those values. OpenAI is supported as an optional alternative when Gemini is not configured. If the selected API key is missing, unavailable, or times out, the app falls back to a deterministic database-statistics answer instead of breaking the feature.
 
 Example:
 
 ```env
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=gemini-3.6-flash
+# Optional alternative provider
 OPENAI_API_KEY=your-openai-api-key
 OPENAI_MODEL=gpt-4o-mini
 ```

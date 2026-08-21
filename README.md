@@ -10,6 +10,7 @@ The app has two main parts:
 - Backend: Express + PostgreSQL + Supabase auth in `backend/`
 ## demo Links
 Github: https://github.com/yashvini-chirri/mic-eventpass
+
 Deployed: https://mic-eventpass-frontend.vercel.app/
 
 ## Tech Stack

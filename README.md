@@ -1,14 +1,108 @@
 # MIC EventPass
 
-Event registration and QR check-in system for MIC events.
+MIC EventPass is a full-stack event management app for MIC events. It supports organizer workflows, attendee registration, QR code ticketing, live dashboards, and AI-assisted event insights.
 
-## Run Locally
+## Overview
+
+The app has two main parts:
+
+- Frontend: Next.js app in `frontend/`
+- Backend: Express + PostgreSQL + Supabase auth in `backend/`
+
+## Tech Stack
+
+- Frontend: Next.js 16, React 19, TypeScript
+- Backend: Node.js, Express, PostgreSQL, Socket.IO
+- Auth: Supabase Auth
+- QR handling: `qrcode` and `html5-qrcode`
+- UI: custom CSS + Lucide icons
+
+## Current Features
+
+- Organizer login and protected organizer workspace
+- Event creation with name, date, and capacity
+- Attendee registration for a selected event
+- One-time QR pass generation per registration
+- QR check-in using:
+  - live camera scanner
+  - uploaded image scan
+  - manual token entry
+- Organizer dashboard with live event stats and attendee list
+- Real-time refresh using Socket.IO
+- CSV export of event attendance data
+- Offline QR scan queue with retry on reconnect
+- AI event insights powered by OpenAI when configured
+- Fallback insight generation from raw database statistics if AI is unavailable
+- Server-side security checks for Supabase access tokens and user role enforcement
+- Database concurrency protections for capacity limits and duplicate check-ins
+
+## Project Structure
+
+```text
+mic-eventpass/
+├── backend/
+│   ├── src/
+│   ├── sql/
+│   ├── tests/
+│   ├── .env
+│   ├── .env.example
+│   └── package.json
+├── frontend/
+│   ├── src/
+│   ├── .env.local.example
+│   ├── package.json
+│   └── README.md
+├── README.md
+└── .gitignore
+```
+
+## Local Setup
+
+### 1) Install dependencies
 
 Backend:
 
 ```powershell
 cd backend
-npm start
+npm install
+```
+
+Frontend:
+
+```powershell
+cd frontend
+npm install
+```
+
+### 2) Configure environment variables
+
+Create `backend/.env` using the example file as a guide:
+
+```env
+DATABASE_URL=postgresql://user:password@host:5432/database
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+OPENAI_API_KEY=your-openai-api-key
+OPENAI_MODEL=gpt-4o-mini
+PORT=5000
+```
+
+Create `frontend/.env.local`:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+NEXT_PUBLIC_API_URL=http://localhost:5000
+```
+
+### 3) Start the app
+
+Backend:
+
+```powershell
+cd backend
+npm run dev
 ```
 
 Frontend:
@@ -18,31 +112,44 @@ cd frontend
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open:
 
-Configure `backend/.env` with `DATABASE_URL`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY`. Configure `frontend/.env.local` with the public Supabase URL/key and `NEXT_PUBLIC_API_URL`.
+- Frontend: http://localhost:3000
+- Backend: http://localhost:5000
 
-Apply `backend/sql/001_profiles_rls.sql` in Supabase SQL Editor when setting up a fresh database. It allows the signed-in frontend to read only the current user's role profile.
+## Supabase Setup
 
-## Implemented Requirements
+Apply the SQL profile policy script in your Supabase SQL editor:
 
-- Organizer event creation with name, date, and capacity.
-- Attendee registration with one unique QR token per registration.
-- One-time QR tokens: random raw tokens are shown once, SHA-256 hashes are stored, and tokens expire after 24 hours.
-- Camera scanning, QR image upload, and manual token check-in.
-- Database-safe capacity using a PostgreSQL transaction and `SELECT ... FOR UPDATE` on the event row.
-- Database-safe duplicate check-in handling using a locked QR token row and the unique `checkins.registration_id` constraint.
-- Supabase Auth bearer-token verification and backend role enforcement.
-- Organizer dashboard polling every five seconds.
-- Organizer CSV export with attendee and check-in data.
-- Offline scan queue in browser storage. The queue retries after reconnect; if another station checked in first, the server returns a duplicate response and the queued item is resolved without creating another check-in.
-- Server-side AI insights using database-computed statistics, an eight-second timeout, and deterministic raw-stat fallback when OpenAI is unavailable.
+```sql
+-- backend/sql/001_profiles_rls.sql
+```
 
-Socket.IO powers live dashboard notifications. Event creation, registration, and check-in emit an `event:updated` notification; the organizer dashboard reloads the selected event immediately without a manual refresh.
+This helps enforce per-user profile access and role checks for the signed-in frontend.
 
-## Concurrency Proof
+## Authentication Flow
 
-Run the database-level service proof:
+- Users sign in with Supabase Auth from the frontend.
+- The frontend sends the access token in the Authorization header.
+- The backend verifies the token with Supabase.
+- The backend loads the user's profile and checks the assigned role.
+- Organizers and attendees get different access to routes and features.
+
+## API Notes
+
+Main backend routes include:
+
+- `GET /api/events`
+- `POST /api/events`
+- `POST /api/registrations`
+- `POST /api/registrations/check-in`
+- `GET /api/registrations/dashboard/:eventId`
+- `GET /api/registrations/export/:eventId`
+- `POST /api/insights/:eventId`
+
+## Verification / Proof Scripts
+
+### Capacity protection
 
 ```powershell
 cd backend
@@ -59,9 +166,16 @@ Database count : 1
 VERDICT        : PASS
 ```
 
-The protected HTTP concurrency script is `backend/tests/concurrency-registration.js`. It requires real Supabase access tokens through `TEST_ACCESS_TOKENS`, because protected routes must not accept spoofed profile IDs.
+### Protected registration flow
 
-Run the duplicate check-in race proof:
+```powershell
+cd backend
+node tests/concurrency-registration.js
+```
+
+This script uses real Supabase access tokens from `TEST_ACCESS_TOKENS` and checks protected registration behavior under concurrency.
+
+### Duplicate check-in protection
 
 ```powershell
 cd backend
@@ -78,13 +192,32 @@ Database count : 1
 VERDICT        : PASS
 ```
 
-## AI Configuration
+## AI Insights
 
-The OpenAI key is server-side only:
+OpenAI is configured on the backend only. If the API key is missing or the call fails, the app falls back to a deterministic database-statistics answer instead of breaking the feature.
+
+Example:
 
 ```env
 OPENAI_API_KEY=your-openai-api-key
 OPENAI_MODEL=gpt-4o-mini
 ```
 
-If the key is missing or the API times out, the backend returns answers generated from the current database statistics.
+## Notes
+
+- The app is designed for event check-in and attendee tracking workflows.
+- The frontend and backend must both be running during normal use.
+- The repository is set up for local development and can be extended for deployment later.
+
+## Status
+
+This project is currently implemented with the core end-to-end flow for:
+
+- event creation
+- attendee binding
+- QR registration
+- organizer check-in
+- live dashboard updates
+- offline queue recovery
+- analytics insights
+- secure role-based backend access

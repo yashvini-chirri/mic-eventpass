@@ -831,7 +831,7 @@ export default function Home() {
           aria-label="Loading Eventry"
         >
           <Image
-            src="/ChatGPT Image Aug 21, 2026, 07_29_58 PM.png"
+            src="/image.png"
             alt="Eventry"
             fill
             priority
@@ -905,13 +905,7 @@ export default function Home() {
 
       <header className="topbar">
         <div className="brand">
-          <Image
-            src="/eventry-logo.png"
-            alt="Eventry logo"
-            width={32}
-            height={32}
-            priority
-          />
+          
 
           <Image
             src="/eventry-word.png"
